@@ -1,0 +1,749 @@
+http://nuttle.net/statistics/functions.r
+# dan.R2(SSE,SSR)
+# dan.adj.R2(SSE,SSR,n,k)
+# dan.ht.numeric(point.est, n, sd, point.est.2=NULL, n.2=NULL, sd.2=NULL, conf_level=0.95, two.sided=TRUE)
+#   dan.ht.numeric.one(point.est, n, sd, nullval=0, conf_level=0.95, two.sided=TRUE)
+#     dan.ht.numeric.one.Z(point.est, n, sd, nullval=0, conf_level=0.95, two.sided=TRUE)
+#     dan.ht.numeric.one.t(point.est, n, sd, nullval=0, conf_level=0.95, two.sided=TRUE)
+#   dan.ht.numeric.two(point.est.1, n.1, sd.1, point.est.2, n.2, sd.2, nullval=0, conf_level=0.95, two.sided=TRUE)
+#     dan.ht.numeric.two.Z(point.est.1, n.1, sd.1, point.est.2, n.2, sd.2, nullval=0, conf_level=0.95, two.sided=TRUE)
+#     dan.ht.numeric.two.t(point.est.1, n.1, sd.1, point.est.2, n.2, sd.2, nullval=0, conf_level=0.95, two.sided=TRUE)
+# dan.ci.numeric(point.est, n, sd, point.est.2=NULL, n.2=NULL, sd.2=NULL, conf_level=0.95)
+#   dan.ci.numeric.one(point.est, n, sd, conf_level=0.95)
+#     dan.ci.numeric.one.Z(point.est, n, sd, conf_level=0.95)
+#     dan.ci.numeric.one.t(point.est, n, sd, conf_level=0.95)
+#   dan.ci.numeric.two(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level=0.95)
+#     dan.ci.numeric.two.Z(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level=0.95)
+#     dan.ci.numeric.two.t(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level=0.95)
+# dan.ht.prop(p.hat, n, p.hat.2=NULL, n.2=NULL, conf_level=0.95, two.sided=TRUE)
+#   dan.ht.prop.one(p.hat, n, nullval, conf_level=0.95, two.sided=TRUE)
+#     dan.ht.prop.one.Z(p.hat, n, nullval, conf_level=0.95, two.sided=TRUE)
+#   dan.ht.prop.two(p.hat.1, n.1, p.hat.2, n.2, nullval, conf_level=0.95, two.sided=TRUE,pooled=FALSE)
+#     dan.ht.prop.two.Z(p.hat.1, n.1, p.hat.2, n.2, nullval, conf_level=0.95, two.sided=TRUE,pooled=FALSE)
+# dan.ci.prop(p.hat, n, p.hat.2=NULL, n.2=NULL, conf_level=0.95)
+#   dan.ci.prop.one(p.hat, n, conf_level=0.95)
+#     dan.ci.prop.one.Z(p.hat, n, conf_level=0.95)
+#   dan.ci.prop.two(p.hat.1, n.1, p.hat.2, n.2, conf_level=0.95)
+#     dan.ci.prop.two.Z(p.hat.1, n.1, p.hat.2, n.2, conf_level=0.95)
+# dan.sampsize.numeric(conf_level, sigma, ME)
+# dan.sampsize.prop(conf_level, p, ME)
+# dan.sst(y)
+# dan.ssg(data,y,j)
+# dan.sse(data,y,j)
+# dan.msg(data,y,j)
+# dan.mse(data,y,j)
+# dan.f(data,y,j)
+# dan.ht.anova(data,y,j)
+# dan.norm.approx(n, prob, target)
+  
+load(url("http://s3.amazonaws.com/assets.datacamp.com/course/dasi/inference.Rdata"))
+load(url("http://s3.amazonaws.com/assets.datacamp.com/course/dasi/gss.Rdata"))
+
+dan.debug=TRUE
+dan.log <- function(...) {
+  if(dan.debug==TRUE) {
+    cat(..., "\n")
+  }
+}
+
+# Chi-square goodness of fit: Use when a categorical variable has several levels, and 
+# you want to compare observed values for each with expected values.
+
+# example of a chi-square GOF
+# this is for a case where a categorical variable has four levels with probabilities shown
+# if no p value (expected probabilities) supplied, they are all assumed to be equal
+# observed = c(0.21,0.29,0.14,0.36)
+# expected = c(0.22, 0.28, 0.19, 0.31)
+# chisq.test(x=observed)
+# same as above, but with supplied probabilites
+# chisq.test(x=observed, p=expected)
+# you can also use the X^2 value to get same result
+# the last example yields X^2-2.2034
+# k = length(observed)
+# pchisq(x=2.2034,df=k-1,lower.tail=FALSE)
+
+# Chi-square independence test: use when there are two categorical variables, at least one of
+# which has more than two levels.  It tells you whether there is a relationship between these variables.
+# X^2 is same as before, but the sum of the X^2's for each level of the cat. var. 
+# data <- data.frame(dating=c(obese=81,not=359),cohabiting=c(obese=103,not=326),
+#  married=c(obese=147,not=277))
+# chisq.test(data)
+
+# Normal approximation of the binomial
+dan.normapprox <- function(n,prob,target) {
+  # target kind of like a null value, an alternative to n*prob
+  sigma = sqrt(n*prob*(1-prob))
+  Z = ((n*prob)-target)/sigma
+  dan.log("Z:",Z)
+  return(1-pnorm(Z,lower.tail=F))
+}
+
+dan.X2 <- function(obs, expect) {
+  x2 = sum((obs-expect)^2/expect)
+  return(x2)
+}
+
+dan.R2 <- function(SSE, SSR) {
+  # SSE is the Residuals line (sum of squared errors)
+  # SSR is the sum of squared...?...the predictors (SSR is in the video)
+  SSR.total = sum(SSR)
+  SST = SSR.total + SSE
+  dan.log("R2:",SSR.total/SST)
+  return(SSR.total/SST)
+}
+
+dan.adj.R2 <- function(SSE, SSR, n, k) {
+  # SSE is the Residuals line (sum of squared errors)
+  # SSR is the sum of squared...?...the predictors (SSR is in the video)
+  # n is the number of cases
+  # k is the number of predictors, so if cat. var. has three levels, there will be 2 in the model
+  SSR.total = sum(SSR)
+  SST = SSR.total + SSE
+  adj.R2 = 1- (((n-1)/(n-k-1)) * SSE/SST)
+  dan.log("Adj. R2:",adj.R2)
+  return(adj.R2)
+}
+
+dan.ht.numeric<- function(point.est, n, sd, point.est.2=NULL, n.2=NULL, sd.2=NULL, nullval=0, conf_level=0.95, two.sided=TRUE) {
+  if(is.null(point.est.2)) {
+    dan.log("Single-statistic test")
+    return(dan.ht.numeric.one(point.est=point.est,n=n,sd=sd,nullval=nullval,conf_level=conf_level,two.sided=two.sided))
+  } else {
+    dan.log("Two-statistic test")
+    return(dan.ht.numeric.two(point.est.1=point.est, n.1=n,sd.1=sd,point.est.2=point.est.2,n.2=n.2,sd.2=sd.2,
+                              nullval=nullval,conf_level=conf_level,two.sided=two.sided))
+  }
+}
+
+dan.ht.numeric.one <- function(point.est, n, sd, nullval=0, conf_level=0.95, two.sided=T) {
+  if(n >= 30) {
+    dan.log("Using Z distribution")
+    return(dan.ht.numeric.one.Z(point.est, n, sd, nullval, conf_level, two.sided))
+  } else {
+    dan.log("Using t distribution")
+    return(dan.ht.numeric.one.t(point.est, n, sd, nullval, conf_level, two.sided))
+  }
+}
+
+# std. error is sd/sqrt(n)
+# Z is abs(point est. - nullval)/std. error
+# p-value is pnorm(Z, lower.tail=F)
+dan.ht.numeric.one.Z <- function(point.est, n, sd, nullval=0, conf_level=0.95, two.sided=T) {
+  if(n < 30) stop("*** ERROR: dan.ht.numeric.one.Z is not valid when n < 30")
+  alpha = 1 - conf_level
+  se = sd/sqrt(n)
+  Z = (point.est - nullval)/se
+  p_value = pnorm(abs(Z), lower.tail=F)
+  if(two.sided==TRUE) {
+    p_value = p_value * 2
+  }
+  dan.log("Std. error:",se)
+  dan.log("Z score:", Z)
+  dan.log("p-value:", p_value)
+  if(p_value < alpha) {
+    dan.log("REJECT null hypothesis")
+  } else {
+    dan.log("DO NOT reject null hypothesis")
+  }
+  return(p_value)
+}
+
+# How different from dan.ht.numeric.one.Z:
+# Need degrees of freedom (df): n-1
+# Z score: Use pt instead of pnorm, pass df into this
+dan.ht.numeric.one.t <- function(point.est, n, sd, nullval=0, conf_level=0.95, two.sided=T) {
+  alpha = 1 - conf_level
+  se = sd/sqrt(n)
+  df = n - 1
+  t = (point.est - nullval)/se
+  p_value = pt(abs(t), lower.tail=F,df=df)
+  if(two.sided==TRUE) {
+    p_value = p_value * 2
+  }
+  dan.log("Std. error:",se)
+  dan.log("t score:", t);
+  dan.log("p_value:", p_value)
+  if(p_value < alpha) {
+    dan.log("REJECT null hypothesis")
+  } else {
+    dan.log("DO NOT reject null hypothesis")
+  }
+  return(p_value)
+}
+
+dan.ci.numeric <- function(point.est, n, sd, point.est.2=NULL, n.2=NULL, sd.2=NULL, conf_level=0.95) {
+  if(is.null(point.est.2)) {
+    dan.log("Single-statistic conf. interval")
+    dan.ci.numeric.one(point.est=point.est, n=n, sd=sd, conf_level=conf_level)
+  } else {
+    dan.log("Two-statistic conf. interval")
+    dan.ci.numeric.two(point.est.1=point.est,n.1=n,sd.1=sd,
+          point.est.2=point.est.2,n.2=n.2,sd.2=sd.2,conf_level=conf_level)
+  }
+}
+
+dan.ci.numeric.one <- function(point.est, n, sd, conf_level=0.95) {
+  if(n >= 30) {
+    dan.log("Using Z distribution")
+    return(dan.ci.numeric.one.Z(point.est, n, sd, conf_level))
+  } else {
+    dan.log("Using t distribution")
+    return(dan.ci.numeric.one.t(point.est, n, sd, conf_level))
+  }
+}
+
+# Differences from dan.ht.numeric.one.Z:
+# alpha is 1 - conf_level
+# Z_star instead of Z: qnorm(conf_level + alpha/2)
+# conf. int.: point est. +/- Z_star * std. error
+dan.ci.numeric.one.Z <- function(point.est, n, sd, conf_level) {
+  if(n < 30) stop("*** ERROR: dan.ci.numeric.one.Z is not valid when n < 30")
+  alpha = 1 - conf_level
+  se = sd/sqrt(n)
+  Z_star = qnorm(conf_level + (alpha/2))
+  ci = c(point.est - Z_star * se, point.est + Z_star * se)
+  dan.log("Std. error:",se)
+  dan.log("Z star:", Z_star)
+  dan.log("Conf. interval: ", ci[1], ci[2])
+  return(ci)
+}
+
+# Differences from dan.ci.numeric.one.Z:
+# Degrees of freedom (df) is n - 1
+# t_star is qt(conf_level + alpha/2, df=df)
+# conf. int. uses t_star instead of Z_star
+dan.ci.numeric.one.t <- function(point.est, n, sd, conf_level) {
+  alpha = 1 - conf_level
+  se = sd/sqrt(n)
+  df = n - 1
+  t_star = qt(conf_level + (alpha/2), df=df)
+  ci = c(point.est - t_star * se, point.est + t_star * se)
+  dan.log("Std. error:",se)
+  dan.log("t star:", t_star)
+  dan.log("Conf. interval: ", ci[1], ci[2])
+  return(ci)
+}
+
+dan.sampsize.numeric <- function(conf_level, sigma, ME) {
+  alpha = 1 - conf_level
+  Z_star = qnorm(conf_level + (alpha/2))
+  return (((Z_star * sigma)/ME)^2)
+}
+
+dan.ht.numeric.two <- function(point.est.1, n.1, sd.1, point.est.2, n.2, sd.2, nullval=0, conf_level=0.95, two.sided=TRUE) {
+  if(min(n.1,n.2)<30) {
+    dan.log("Using t distribution")
+    dan.ht.numeric.two.t(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,nullval,conf_level,two.sided)
+  } else {
+    dan.log("Using Z distribution")
+    dan.ht.numeric.two.Z(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,nullval,conf_level,two.sided)
+  }
+}
+
+# Differences from dan.ht.numeric.one.Z:
+# point est. is now point est. 1 - point est. 2
+# Std. error is now sqrt( (sd.1)^2/n.1 + (sd.2)^2/n.2 )
+dan.ht.numeric.two.Z <- function(point.est.1, n.1, sd.1, point.est.2, n.2, sd.2, nullval=0, conf_level=0.95, two.sided=TRUE) {
+  if(min(n.1, n.2) < 30) stop("*** ERROR: dan.ht.numeric.two.Z is not valid when n.1 or n.2 < 30")
+  alpha = 1 - conf_level
+  se.diff = sqrt(sd.1^2/n.1 + sd.2^2/n.2)
+  point.est.diff = point.est.1 - point.est.2
+  Z = (point.est.diff - nullval)/se.diff
+  p_value = pnorm(abs(Z), lower.tail=F)
+  if(two.sided==TRUE) {
+    p_value = p_value * 2
+  }
+  dan.log("Std. error:",se.diff)
+  dan.log("Z score:",Z)
+  dan.log("p_value:", p_value)
+  if(p_value < alpha) {
+    dan.log("REJECT the null hypothesis")
+  } else {
+    dan.log("DO NOT reject the null hypothesis")
+  }
+  return(p_value)
+}
+
+# Differences from dan.ht.numeric.two.Z:
+# Degrees of freedom (df) is min(n.1,n.2) - 1
+# Use t score instead of Z score: t = abs(point.est.diff - nullval)/se.diff
+# Use pt for p-value: pt(t, lower.tail=F, df=df)
+dan.ht.numeric.two.t <- function(point.est.1, n.1, sd.1, point.est.2, n.2, sd.2, nullval=0, conf_level=0.95, two.sided=TRUE) {
+  alpha = 1 - conf_level
+  se.diff = sqrt(sd.1^2/n.1 + sd.2^2/n.2)
+  point.est.diff = point.est.1 - point.est.2
+  df = min(n.1,n.2)-1
+  t = (point.est.diff - nullval)/se.diff
+  p_value = pt(abs(t), lower.tail=F, df=df)
+  if(two.sided==TRUE) {
+    p_value = p_value * 2
+  }
+  dan.log("Degrees of freedom:", df)
+  dan.log("Std. error:",se.diff)
+  dan.log("t score:",t)
+  dan.log("p_value:", p_value)
+  if(p_value < alpha) {
+    dan.log("REJECT the null hypothesis")
+  } else {
+    dan.log("DO NOT reject the null hypothesis")
+  }
+  return(p_value)
+}
+
+dan.ci.numeric.two <- function(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level=0.95) {
+  if(min(n.1, n.2)<30) {
+    dan.log("Using t distribution")
+    dan.ci.numeric.two.t(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level)
+  } else {
+    dan.log("Using Z distribution")
+    dan.ci.numeric.two.Z(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level)
+  }
+}
+
+# Differences from dan.ci.numeric.one.Z:
+# point est. is now point.est.1 - point.est.2
+# Std. error is sqrt( sd.1^2/n.2 + sd.2^2/n.2 )
+dan.ci.numeric.two.Z <- function(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level=0.95) {
+  if(min(n.1, n.2) < 30) stop("*** ERROR: dan.ci.numeric.two.Z is not valid when n.1 or n.2 < 30")
+  alpha = 1 - conf_level
+  point.est.diff = point.est.1 - point.est.2
+  se.diff = sqrt(sd.1^2/n.1 + sd.2^2/n.2)
+  Z_star = qnorm(conf_level + (alpha/2))
+  ci = c(point.est.diff - Z_star * se.diff, point.est.diff + Z_star * se.diff)
+  dan.log("Point est.:",point.est.diff)
+  dan.log("Std. error:",se.diff)
+  dan.log("Z star:", Z_star)
+  dan.log("Conf. interval:", ci[1], ci[2])
+  return(ci)
+}
+
+# Differences from dan.ci.numeric.two.Z:
+# Degrees of freedom: min(n.1, n.2) - 1
+# t_star instead of Z_star: qt(conf_level + alpha/2, df=df)
+# conf. interval uses t_star not Z_star
+dan.ci.numeric.two.t <- function(point.est.1,n.1,sd.1,point.est.2,n.2,sd.2,conf_level=0.95) {
+  alpha = 1 - conf_level
+  point.est.diff = point.est.1 - point.est.2
+  se.diff = sqrt(sd.1^2/n.1 + sd.2^2/n.2)
+  df = min(n.1,n.2)-1
+  t_star = qt(conf_level + (alpha/2),df=df)
+  ci = c(point.est.diff - t_star * se.diff, point.est.diff + t_star * se.diff)
+  dan.log("Point est.:",point.est.diff)
+  dan.log("Std. error:",se.diff)
+  dan.log("t star:", t_star)
+  dan.log("Conf. interval:", ci[1], ci[2])
+  return(ci)
+}
+
+dan.sst <- function(y) {
+  y_mean = mean(y)
+  result = sum(sapply(y, function(y_i) {
+    (y_i - y_mean)^2
+  }))
+  dan.log("SST:",result)
+  return(result)
+}
+
+dan.ssg <- function(data, y, j) {
+  total = 0
+  mean.grand = mean(y)  # mean for all values
+  for (grp in unique(j)) {
+    grp_data = y[j == grp]  # vector of the y column of data
+    mean.group = mean(grp_data)  # mean for current group
+    total = total + length(grp_data) * (mean.group - mean.grand)^2
+  }
+  dan.log("SSG:",total)
+  return(total)
+}
+
+dan.sse <- function(data, y, j) {
+  sst = dan.sst(y)
+  ssg = dan.ssg(data, y, j)
+  sse = sst - ssg
+  dan.log("SSE:",sse)
+  return(sse)
+}
+
+dan.msg <- function(data,y,j) {
+  ssg = dan.ssg(data,y,j)
+  groups = length(unique(j))
+  df.G = groups - 1
+  msg = ssg/df.G
+  dan.log("MSG:",msg)
+  return(msg)
+}
+
+dan.mse <- function(data,y,j) {
+  sse = dan.sse(data,y,j)
+  groups = length(unique(j))
+  df.G = groups - 1
+  df.T = length(j) - 1
+  df.E = df.T - df.G
+  mse = sse/df.E
+  dan.log("MSE:",mse)
+  return(mse)
+}
+
+dan.f <- function(data,y,j) {
+  msg = dan.msg(data,y,j)
+  mse = dan.mse(data,y,j)
+  f = msg/mse
+  dan.log("F-statistic:", f)
+  return(f)
+}
+
+dan.ht.anova <- function(data, y, j, conf_level=0.95) {
+  alpha = 1 - conf_level
+  f = dan.f(data,y,j)
+  df.T = length(j) - 1
+  groups = length(unique(j))
+  df.G = groups - 1
+  df.E = df.T = df.G
+  p_value = pf(f, df1=df.G, df2=df.E, lower.tail=FALSE)
+  dan.log("p-value for ANOVA:",p_value)
+  if(p_value < alpha) dan.log("REJECT the null hypothesis")
+  else dan.log("DO NOT reject the null hypothesis")
+  return(p_value)
+}
+
+dan.sampsize.prop <- function(conf_level, p, ME) {
+  alpha = 1 - conf_level
+  z_star = qnorm(conf_level + (alpha/2))
+  sampsize = (z_star/ME)^2 * (p * (1-p))
+  dan.log("Sample size:",sampsize)
+  return(sampsize)
+}
+
+dan.ht.prop <- function(p.hat,n,p.hat.2=NULL,n.2=NULL,nullval=0,conf_level=0.95,two.sided=TRUE) {
+  if(is.null(p.hat.2)) {
+    dan.log("One-statistic test")
+    dan.ht.prop.one(p.hat=p.hat,n=n,nullval=nullval,conf_level=conf_level,two.sided=two.sided)
+  } else {
+    dan.log("Two-statistic test")
+    dan.ht.prop.two(p.hat=p.hat,n=n,p.hat.2=p.hat.2,n.2=n.2,nullval=nullval,conf_level=conf_level,two.sided=two.sided)
+  }
+}
+
+dan.ht.prop.one <- function(p.hat,n,nullval=0,conf_level = 0.95,two.sided=TRUE) {
+  if(nullval*n<10 | (1-nullval)*n<10) stop("*** ERROR: dan.ht.prop.one is not valid when n*p<10 or n*(1-p)<10")
+  return(dan.ht.prop.one.Z(p.hat,n,nullval,conf_level,two.sided))
+}
+
+# Differences from dan.ht.numeric.one.Z:
+# (Check for sample size changes to 10 success/10 failure, uses nullval)
+# Std. error: sqrt( (nullval * (1 - nullval)) / n )
+dan.ht.prop.one.Z <- function(p.hat,n,nullval=0,conf_level=0.95,two.sided=TRUE) {
+  if(nullval*n<10 | (1-nullval)*n<10) stop("*** ERROR: dan.ht.prop.one.Z is not valid when n*p<10 or n*(1-p)<10")
+  alpha = 1 - conf_level
+  se = sqrt((nullval * (1 - nullval))/n)
+  Z = (p.hat-nullval)/se
+  p_value = pnorm(abs(Z), lower.tail=FALSE)
+  if(two.sided==TRUE) p_value = p_value * 2
+  dan.log("Std. error:",se)
+  dan.log("Z score:",Z)
+  dan.log("p-value:",p_value)
+  if(p_value < alpha) {
+    dan.log("REJECT the null hypothesis")
+  } else {
+    dan.log("DO NOT reject the null hypothesis")
+  }
+  return(p_value)
+}
+
+dan.ci.prop <- function(p.hat,n,p.hat.2=NULL,n.2=NULL,conf_level=0.95) {
+  if(is.null(p.hat.2)) {
+    dan.log("One-statistic conf. interval")
+    dan.ci.prop.one(p.hat=p.hat,n=n,conf_level=conf_level)
+  } else {
+    dan.log("Two-statistic conf. interval")
+    dan.ci.prop.two(p.hat=p.hat,n=n,p.hat.2=p.hat.2,n.2=n.2,conf_level=conf_level)
+  }
+}
+
+dan.ci.prop.one <- function(p.hat,n,conf_level=0.95) {
+  if(p.hat*n<10 | (1-p.hat)*n<10) stop("*** ERROR: dan.ci.prop.one is not valid when n*p<10 or n*(1-p)<10")
+  return(dan.ci.prop.one.Z(p.hat,n,conf_level))
+}
+
+# Differences from dan.ci.numeric.one.Z:
+# (Check for sample size changes to 10 success/10 failure, uses p.hat)
+# Std. error: sqrt( (p.hat * (1 - p.hat)) / n )
+dan.ci.prop.one.Z <- function(p.hat,n,conf_level=0.95) {
+  if(p.hat*n<10 | (1-p.hat)*n<10) stop("*** ERROR: dan.ci.prop.one.Z is not valid when n*p<10 or n*(1-p)<10")
+  alpha = 1 - conf_level
+  se = sqrt((p.hat*(1-p.hat))/n)
+  z_star = qnorm(conf_level + (alpha/2))
+  ci = c(p.hat - z_star * se, p.hat + z_star * se)
+  dan.log("Std. error:",se)
+  dan.log("Conf. interval:",ci[1],ci[2])
+  return(ci)
+}
+
+dan.ht.prop.two <- function(p.hat.1, n.1, p.hat.2, n.2, nullval=0, conf_level=0.95,two.sided=TRUE,pooled=FALSE) {
+  if(p.hat.1*n.1<10 | (1-p.hat.1)*n.1<10
+      | p.hat.2*n.2<10 | (1-p.hat.2)*n.2<10) 
+      stop("*** ERROR: dan.ht.prop.two is not valid when n*p<10 or n*(1-p)<10")
+  return(dan.ht.prop.two.Z(p.hat.1,n.1,p.hat.2,n.2,nullval,conf_level,two.sided,pooled))
+}
+
+# Differences from dan.ht.prop.one.Z:
+# Pooled estimate: only if null value==0 (or use flag): (p.hat.1 * n.1 + p.hat.2 * n.2) / (n.1 + n.2)
+# Success/failure check is different for pooled prop. estimate
+# Std. error
+# 	If using pooled est. (null value==0): sqrt( (p.pooled * (1 - p.pooled))/n.1 + (p.pooled * (1 - p.pooled))/n.2 )
+# 	Otherwise: sqrt( (p.hat.1 * (1 - p.hat.1))/n.1 + (p.hat.2 * (1 - p.hat.2))/n.2 )
+# But: it is rare for hyp. test when nullval is not 0
+dan.ht.prop.two.Z <- function(p.hat.1, n.1, p.hat.2, n.2, nullval=0, conf_level=0.95,two.sided=TRUE,pooled=FALSE) {
+  p.hat.diff = p.hat.1 - p.hat.2
+  if(nullval==0 | pooled==TRUE) {
+    # pooled proportion estimate
+    dan.log("Using pooled proportion estimate")
+    p.pooled = (p.hat.1*n.1 + p.hat.2*n.2)/(n.1+n.2)
+    if(p.pooled*n.1<10 | (1-pooled)*n.1<10
+       | p.pooled*n.2<10 | (1-pooled)*n.2<10) 
+      stop("*** ERROR: dan.ht.prop.two.Z is not valid when n*p<10 or n*(1-p)<10")
+    dan.log("Pooled prop. est.:",p.pooled)
+    se.diff = sqrt((p.pooled * (1 - p.pooled))/n.1 + (p.pooled * (1-p.pooled))/n.2)
+  } else {
+    # un-pooled
+    if(p.hat.1*n.1<10 | (1-p.hat.1)*n.1<10
+       | p.hat.2*n.2<10 | (1-p.hat.2)*n.2<10) 
+      stop("*** ERROR: dan.ht.prop.two.Z is not valid when n*p<10 or n*(1-p)<10")
+    se.diff = sqrt((p.hat.1*(1-p.hat.1))/n.1 + (p.hat.2*(1-p.hat.2))/n.2)
+  }
+  Z = (p.hat.diff - nullval)/se.diff
+  p_value = pnorm(abs(Z), lower.tail=FALSE)
+  if(two.sided==TRUE) p_value = p_value * 2
+  dan.log("Std. error:",se.diff)
+  dan.log("Z score:", Z)
+  dan.log("p-value:", p_value)
+  return(p_value)
+}
+
+dan.ci.prop.two <- function(p.hat.1,n.1,p.hat.2,n.2,conf_level=0.95) {
+  if(p.hat.1*n.1<10 | (1-p.hat.1)*n.1<10
+     | p.hat.2*n.2<10 | (1-p.hat.2)*n.2<10) 
+    stop("*** ERROR: dan.ht.prop.one is not valid when n*p<10 or n*(1-p)<10")
+  return(dan.ci.prop.two.Z(p.hat.1,n.1,p.hat.2,n.2,conf_level))
+}
+
+# Differences from dan.ci.prop.one.Z:
+# point est. is p.hat.1 - p.hat.2
+# std. error: sqrt( (p.hat.1 * (1 - p.hat.1))/n.1 + (p.hat.2 * (1 - p.hat.2))/n.2 )
+dan.ci.prop.two.Z <- function(p.hat.1, n.1, p.hat.2, n.2, conf_level=0.95) {
+  if(p.hat.1*n.1<10 | (1-p.hat.1)*n.1<10
+     | p.hat.2*n.2<10 | (1-p.hat.2)*n.2<10) 
+    stop("*** ERROR: dan.ci.prop.one.Z is not valid when n*p<10 or n*(1-p)<10")
+  alpha = 1 - conf_level
+  p.hat.diff = p.hat.1 - p.hat.2
+  se.diff = sqrt((p.hat.1 * (1-p.hat.1))/n.1 + (p.hat.2 * (1-p.hat.2))/n.2)
+  z_star = qnorm(conf_level + (alpha/2))
+  ci = c(p.hat.diff - z_star * se.diff, p.hat.diff + z_star * se.diff)
+  dan.log("Point est.:",p.hat.diff)
+  dan.log("Std. error:",se.diff)
+  dan.log("Conf. interval", ci[1], ci[2])
+  return(ci)
+}
+
+dan.norm.approx <- function(n, prob, target) {
+  sigma = sqrt(n * prob * (1-prob))
+  mu = n * prob
+  Z = (target - mu)/sigma
+  p_value = pnorm(Z, lower.tail=FALSE)
+  dan.log("mu:",mu)
+  dan.log("sigma:",sigma)
+  dan.log("Z:",Z)
+  return(p_value)
+}
+
+dan.isError <- function(f, ...) {
+  dan.err = tryCatch({f(...)},
+  warning = function(w) {}, 
+  error = function(e) {
+    return(TRUE)
+  }, 
+  finally = {})
+  return(dan.err)
+}
+dan.unit.tests <- function() {
+  p_value.numeric.one.Z = dan.ht.numeric(point.est=-0.545,sd=8.887,n=200)
+  if(round(p_value.numeric.one.Z,4)==0.3858 & 
+       # confirm that n<30 fails
+       dan.isError(dan.ht.numeric.one.Z(point.est=0.1,sd=0.1,n=29))==TRUE) {
+    cat("*** PASS dan.ht.numeric.one.Z\n")
+  } else {
+    stop("*** FAIL dan.ht.numeric.one.Z")
+  }
+  p_value.numeric.one.t = dan.ht.numeric(point.est=52.1,sd=45.1,n=22,nullval=30)
+  if(round(p_value.numeric.one.t,4)==0.0319) {
+    cat("*** PASS dan.ht.numeric.one.t\n")
+  } else{
+    stop("*** FAIL dan.ht.numeric.one.t")
+  }
+  ci.numeric.one.Z = dan.ci.numeric(point.est=-0.545,sd=8.887,n=200)
+  if(round(ci.numeric.one.Z[1],4)==-1.7767 & round(ci.numeric.one.Z[2],4)==0.6867 &
+       # confirm that n<30 fails
+       dan.isError(dan.ci.numeric.one.Z(0.1,0.1,29)==TRUE)) {
+    cat("*** PASS dan.ci.numeric.one.Z\n")
+  } else {
+    stop("*** FAIL dan.ci.numeric.one.Z")
+  }
+  ci.numeric.one.t = dan.ci.numeric(point.est=52.1,sd=45.1,n=22)
+  if(round(ci.numeric.one.t[1],4)==32.1038 && round(ci.numeric.one.t[2],4)==72.0962) {
+    cat("*** PASS dan.ci.numeric.one.t\n")
+  } else {
+    stop("*** FAIL dan.ci.numeric.one.t")
+  }
+  p_value.numeric.two.Z = dan.ht.numeric(point.est=41.8,sd=15.14,n=505,
+                                             point.est.2=39.4,sd.2=15.12,n.2=667)
+  if(round(p_value.numeric.two.Z,4)==0.0072 &
+       # confirm that n<30 fails
+       dan.isError(dan.ht.numeric.two.Z(point.est.1=41.8,sd.1=15.14,n.1=29,
+          point.est.2=39.4,n.2=667,sd.2=15.12,n.2=667))==TRUE &
+       dan.isError(dan.ht.numeric.two.Z(point.est.1=41.8,sd.1=15.14,n.1=505,
+          point.est.2=39.4,sd.2=39.4,n.2=29))==TRUE) {
+    cat("*** PASS dan.ht.numeric.two.Z\n")
+  } else {
+    stop("*** FAIL dan.ht.numeric.two.Z")
+  }
+  p_value.numeric.two.t = dan.ht.numeric(point.est=52.1,sd=45.1,n=22,
+                                             point.est.2=27.1,n.2=22,sd.2=26.4)
+  if(round(p_value.numeric.two.t,4)==0.0358) {
+    cat("*** PASS dan.ht.numeric.two.t\n")
+  } else{
+    stop("*** FAIL dan.ht.numeric.two.t")
+  }
+  ci.numeric.two.Z = dan.ci.numeric(point.est=41.8,sd=15.14,n=505,
+                                        point.est.2=39.4,sd.2=15.12,n.2=667)
+  if(round(ci.numeric.two.Z[1],4)==0.6506 & round(ci.numeric.two.Z[2],4)==4.1494 &
+       # confirm that n<30 fails
+       dan.isError(dan.ci.numeric.two.Z(point.est.1=41.8,sd.1=15.14,n.1=29,
+          point.est.2=39.4,sd.2=15.12,n.2=667))==TRUE &
+       dan.isError(dan.ci.numeric.two.Z(point.est.1=41.8,sd.1=15.14,n.1=505,
+          point.est.2=39.4,sd.2=15.12,n.2=29))==TRUE) {
+    cat("*** PASS dan.ci.numeric.two.Z\n")
+  } else {
+    stop("*** FAIL dan.ci.numeric.two.Z")
+  }
+  ci.numeric.two.t = dan.ci.numeric(point.est=52.1,sd=45.1,n=22,
+                                        point.est.2=27.1,sd.2=26.4,n.2=22)
+  if(round(ci.numeric.two.t[1],4)==1.8298 && round(ci.numeric.two.t[2],4)==48.1702) {
+    cat("*** PASS dan.ci.numeric.two.t\n")
+  } else {
+    stop("*** FAIL dan.ci.numeric.two.t")
+  }
+  # dan.sampsize.numeric(conf_level, sigma, ME)
+  sampsize = dan.sampsize.numeric(conf_level=0.95, sigma=25, ME=4)
+  if(ceiling(sampsize)==151) {
+    cat("*** PASS dan.sampsize.numeric\n")
+  } else {
+    stop("*** FAIL dan.sampsize.numeric")
+  }
+  sst = dan.sst(gss$wordsum)
+  if(round(sst,3)==3106.365) {
+    cat("*** PASS dan.sst\n")
+  } else {
+    stop("*** FAIL dan.sst")
+  }
+  ssg = dan.ssg(gss, gss$wordsum, gss$class)
+  if(round(ssg,1)==236.6) {
+    cat("*** PASS dan.ssg\n")
+  } else {
+    stop("*** FAIL dan.ssg")
+  }
+  sse = dan.sse(gss, gss$wordsum, gss$class)
+  if(round(sst,3) - round(ssg,1) == 2869.765) {
+    cat("*** PASS dan.sse\n")
+  } else {
+    stop("*** FAIL dan.sse")
+  }
+  msg = dan.msg(gss, gss$wordsum, gss$class)
+  if(round(msg,3)==78.855) {
+    cat("*** PASS dan.msg\n")
+  } else {
+    stop("*** FAIL dan.msg")
+  }
+  mse = dan.mse(gss, gss$wordsum, gss$class)
+  if(round(mse,3)==3.628) {
+    cat("*** PASS dan.mse\n")
+  } else {
+    stop("*** FAIL dan.mse")
+  }
+  f = dan.f(gss, gss$wordsum, gss$class)
+  if(round(f, 4)==21.7347) {
+    cat("*** PASS dan.f\n")
+  } else {
+    stop("*** FAIL dan.f")
+  }
+  anova.p_value = dan.ht.anova(gss, gss$wordsum, gss$class, 0.95)
+  if(round(anova.p_value,4)==0.0155) {
+    cat("*** PASS dan.ht.anova\n")
+  } else {
+    stop("*** FAIL dan.ht.anova")
+  }
+  ht.prop.one.Z = dan.ht.prop(n=1983, p.hat=0.6, nullval=0.5)
+  if(round(ht.prop.one.Z,4)==0 &
+      # confirm that n*p<10 or n*(1-p)<10 fails
+      dan.isError(dan.ht.prop.one(n=2, p.hat=0.5))==TRUE) {
+    cat("*** PASS dan.ht.prop.one.Z\n")
+  } else {
+    stop("*** FAIL dan.ht.prop.one.Z")
+  }
+  
+  ci.prop.one.Z = dan.ci.prop(n=670, p.hat=(571/670))
+  if(round(ci.prop.one.Z[1],4)==0.8254 & round(ci.prop.one.Z[2],4)==0.8791 &
+       # confirm that n*p<10 or n*(1-p)<10 fails
+       dan.isError(dan.ci.prop.one(n=1, p.hat=0.5))==TRUE) {
+    cat("*** PASS dan.ci.prop.one.Z\n")
+  } else {
+    stop("*** FAIL dan.ci.prop.one.Z")
+  }
+  # this comes from ex. 6-12 in textbook
+  ht.prop.two.Z = dan.ht.prop(n=1000,p.hat=0.958,n.2=1000,p.hat.2=0.899,nullval=0.03,two.sided=FALSE)
+  if(round(ht.prop.two.Z,4)==0.0056 &
+    # confirm failure on small sample
+    dan.isError(dan.ht.prop.two(1, 0.1, 20, 0.9))==TRUE &
+    dan.isError(dan.ht.prop.two(20,0.9, 1, 0.1))==TRUE) {
+    cat("*** PASS dan.ht.prop.two (unpooled)\n")
+  } else {
+    stop("*** FAIL dan.ht.prop.two.Z (unpooled)")
+  }
+  ht.prop.two.Z = dan.ht.prop(n=90,p.hat=(34/90),n.2=122,p.hat.2=(61/122),nullval=0)
+  if(round(ht.prop.two.Z,4)==0.0769 &
+      # confirm failure on small sample
+      dan.isError(dan.ht.prop.two(n=1,p.hat=0.1,n.2=122,p.hat.2=(61/122), nullval=0))==TRUE &
+      dan.isError(dan.ht.prop.two(n=90,p.hat=(34/90),n.2=1,p.hat.2=0.1,nullval=0))==TRUE) {
+    cat("*** PASS dan.ht.prop.two (pooled)\n")
+  } else {
+    stop("*** FAIL dan.ht.prop.two (pooled)\n")
+  }
+  ci.prop.two.Z = dan.ci.prop(n=83,p.hat=(59/83),n.2=1025,p.hat.2=(257/1025))
+  if(round(ci.prop.two.Z[1],4)==0.3590 & round(ci.prop.two.Z[2],4)==0.5612 &
+      # ensure that small sample fails
+       dan.isError(dan.ci.prop.two(n.1=10,p.hat.1=0.1,n.2=1025,p.hat.2=(257/1025)))==TRUE &
+       dan.isError(dan.ci.prop.two(n.1=83,p.hat.1=(59/83),n.2=10,p.hat.2=0.1))==TRUE) {
+    cat("*** PASS dan.ci.prop.two\n")
+  } else {
+    stop("*** FAIL dan.ci.prop.two\n")
+  }
+  prop.sampsize = dan.sampsize.prop(conf_level=0.95, p=0.85, ME=0.01)
+  if(round(prop.sampsize,2)==4897.86) {
+    cat("*** PASS dan.sampsize.prop\n")
+  } else {
+    stop("*** FAIL dan.sampsize.prop")
+  }
+  dan.r2 = dan.R2(339.47, c(132.57,8.21))
+  if(round(dan.r2,4)==0.2931) {
+    cat("*** PASS dan.R2\n")
+  } else {
+    stop("*** FAIL dan.R2")
+  }
+  dan.adj.r2 = dan.adj.R2(SSE=339.47,SSR=c(132.57,8.21),n=51,k=2)
+  if(round(dan.adj.r2,4)==0.2637) {
+    cat("*** PASS dan.adj.R2\n")
+  } else {
+    stop("*** FAIL dan.adj.R2")
+  }
+  dan.log("*** ALL UNIT TESTS PASSED")
+}
+
